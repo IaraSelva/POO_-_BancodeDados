@@ -1,20 +1,27 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
-#Classe Abstrata
+# Classe Abstrata
 class Pessoa:
     def __init__(self, nome, nacionalidade):
         self.nome = nome
         self.nacionalidade = nacionalidade
+    
+    def __repr__(self) -> str:
+        return f"{{nome: {self.nome}, nacionalidade: {self.nacionalidade}}}"
 
-#Herança
+# Herança
 class Autor(Pessoa):
-    pass
+    def __repr__(self) -> str:
+        return f"{{autor = {super().__repr__()}}}"
 
-#Herança
+# Herança
 class Usuario(Pessoa):
     def __init__(self, nome, telefone, nacionalidade):
         super().__init__(nome, nacionalidade)
         self.telefone = telefone
+    
+    def __repr__(self) -> str:
+        return f"{{usuario = {super().__repr__()}, telefone: {self.telefone}}}"
 
 
 class Exemplar:
@@ -22,91 +29,152 @@ class Exemplar:
         self.numero = numero
         self.edicao = edicao
         self.emprestado = emprestado
+    
+    def __repr__(self) -> str:
+        return f"numero: {self.numero}, edicao: {self.edicao}, emprestado: {self.emprestado}"
 
 
 class Livro:
-    def __init__(self, titulo, editora, autores, generos, exemplares, max_renovacoes=0):
+    def __init__(self, titulo, editora, autores, genero, exemplar):
         self.titulo = titulo
         self.editora = editora
         self.autores = autores
-        self.generos = generos
-        self.exemplares = exemplares
-        self.max_renovacoes = max_renovacoes
+        self.genero = genero
+        self.exemplares = [exemplar]
+    
+    def __repr__(self) -> str:
+        return f"titulo: {self.titulo}, editora: {self.editora}, autores: {self.autores}, genero: {self.genero}, exemplares: {self.exemplares}"
 
 
 class Emprestimo:
     def __init__(
         self,
         usuario,
+        titulo,
         exemplar,
         data_emprestimo,
-        data_devolucao=None,
-        estado="emprestado",
+        data_devolucao,
+        situacao="emprestado",
     ):
         self.usuario = usuario
+        self.titulo = titulo
         self.exemplar = exemplar
         self.data_emprestimo = data_emprestimo
         self.data_devolucao = data_devolucao
-        self.estado = estado
+        self.situacao = situacao
+    
+    def __repr__(self) -> str:
+        return f"emprestado para: {self.usuario}, titulo: {self.titulo}, exemplar: {self.exemplar}, data_emprestimo: {self.data_emprestimo}, data_devolucao: {self.data_devolucao}, situacao: {self.situacao}"
 
 
 class Biblioteca:
     def __init__(self):
-        self.livros = []
+        self.livros = {}
+        self.usuarios = []
         self.emprestimos = []
 
-    #Encapsulamento
-    def adicionar_livro(self, livro):
-        self.livros.append(livro)
+    # Encapsulamento
+    def cadastrar_usuario(self, nome, nacionalidade, telefone):
+        novo_usuario = Usuario(nome=nome, nacionalidade=nacionalidade, telefone=telefone)
+        self.usuarios.append(novo_usuario)
+        return novo_usuario
 
-    #Encapsulamento
+    # Encapsulamento
+    def cadastrar_autor(self, nome, nacionalidade):
+        novo_autor = Autor(nome, nacionalidade)
+        return novo_autor
+
+    # Encapsulamento
+    def cadastrar_livro(self, titulo, editora, numero, edicao, autores, genero):
+        exemplar = Exemplar(numero, edicao)
+
+        if titulo in self.livros: # {"as cronics de narnia": demais infos}
+            self.livros[titulo].exemplares.append(exemplar)
+        else:
+            novo_livro = Livro(titulo, editora, autores, genero, exemplar)
+            self.livros[titulo] = novo_livro
+
+    # Encapsulamento
     def registrar_emprestimo(self, usuario, titulo_livro):
-        for livro in self.livros:
-            if livro.titulo == titulo_livro:
-                for exemplar in livro.exemplares:
-                    if not exemplar.emprestado:
-                        exemplar.emprestado = True
-                        emprestimo = Emprestimo(usuario, exemplar, livro,datetime.now())
-                        self.emprestimos.append(emprestimo)
-                        return emprestimo
-        return None
+        if titulo_livro in self.livros:
+            livro = self.livros[titulo_livro]
+            for exemplar in livro.exemplares:
+                if not exemplar.emprestado:
+                    exemplar.emprestado = True
+                    emprestimo = Emprestimo(usuario, titulo_livro, exemplar, formatar_data(datetime.now()), definir_data_devolucao(7))
+                    self.emprestimos.append(emprestimo)
+                    return emprestimo
+        return "Livro não disponível"
 
-    #Encapsulamento
-    def devolver_exemplar(self, emprestimo):
+    # Encapsulamento
+    def devolver_exemplar(self, emprestimo):           
         emprestimo.exemplar.emprestado = False
-        emprestimo.data_devolucao = datetime.now()
-        emprestimo.estado = "devolvido"
+        emprestimo.data_devolucao = formatar_data(datetime.now())
+        emprestimo.situacao = "devolvido"
 
-    #Encapsulamento
+    # Encapsulamento
     def listar_emprestimos(self):
-        return self.emprestimos
+        print(self.emprestimos)
+    
+    # Encapsulamento
+    def listar_livros(self):
+        print(self.livros)
 
+    # Encapsulamento
+    def listar_usuarios(self):
+        print(self.usuarios)
+
+
+# Funções auxiliares
+def formatar_data(data):
+    return data.strftime("%d-%m-%Y")
+
+def definir_data_devolucao(dias_emprestados):
+    return formatar_data(datetime.now() + timedelta(days = dias_emprestados))
 
 # Exemplo de uso
 biblioteca = Biblioteca()
 
-autor = Autor(nome="Luciano Ramalho", nacionalidade="Brasileiro")
-exemplar = Exemplar(numero=1, edicao=2)
-livro = Livro(
-    titulo="Python Fluente",
-    editora="O'Reilly",
-    autores=[autor],
-    generos=["Programação"],
-    exemplares=[exemplar],
-)
+autor = biblioteca.cadastrar_autor(nome="Luciano Ramalho", nacionalidade="Brasileiro")
 
-biblioteca.adicionar_livro(livro)
+biblioteca.cadastrar_livro(titulo="Python Fluente",
+                           editora="O'Reilly",
+                           numero=1,
+                           edicao=2,
+                           autores=[autor],
+                           genero="Programação"
+                           )
 
-usuario = Usuario(nome="João Silva", telefone="987654321", nacionalidade="Brasileiro")
-emprestimo = biblioteca.registrar_emprestimo(usuario, "Python Fluente")
+biblioteca.cadastrar_livro(titulo="Python Fluente",
+                           editora="O'Reilly",
+                           numero=2,
+                           edicao=2,
+                           autores=[autor],
+                           genero="Programação"
+                           )
 
-print(
-    f"Empréstimo realizado: {emprestimo.usuario.nome} emprestou {emprestimo.exemplar.numero} do livro {emprestimo.exemplar.edicao}"
-)
+print("Livros que a biblioteca possui: ")
+biblioteca.listar_livros()
 
-biblioteca.devolver_exemplar(emprestimo)
+usuario_1 = biblioteca.cadastrar_usuario(nome="João Silva", nacionalidade="Brasileiro", telefone="987654321")
+usuario_2 = biblioteca.cadastrar_usuario(nome="Maria Silva", nacionalidade="Brasileira", telefone="987653123")
 
-print(
-    f"Empréstimo devolvido: {emprestimo.usuario.nome} devolveu {emprestimo.exemplar.numero} do livro {emprestimo.exemplar.edicao}"
-)
+print("\n\nUsuarios cadastrados na biblioteca: ")
+biblioteca.listar_usuarios()
+
+emprestimo_1 = biblioteca.registrar_emprestimo(usuario_1, "Python Fluente")
+emprestimo_2 = biblioteca.registrar_emprestimo(usuario_2, "Python Fluente")
+print("\n\nHistórico de empréstimos da biblioteca: ")
+biblioteca.listar_emprestimos()
+
+print("\n\nLivros que atualizados após empréstimos: ")
+biblioteca.listar_livros()
+
+
+biblioteca.devolver_exemplar(emprestimo_1)
+print("\n\nLivros que atualizados após devolução: ")
+biblioteca.listar_livros()
+print("\n\nHistórico de empréstimos da biblioteca: ")
+biblioteca.listar_emprestimos()
+
 
